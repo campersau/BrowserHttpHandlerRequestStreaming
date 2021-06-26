@@ -1,0 +1,96 @@
+﻿@page "/"
+
+@implements IDisposable
+
+<h1>Streaming request / response</h1>
+
+Type to send:
+<input @bind="Input" @bind:event="oninput" />
+
+You typed: @Message
+
+@code {
+
+    string Input
+    {
+        get => null;
+        set
+        {
+            pipe.Writer.WriteAsync(System.Text.Encoding.UTF8.GetBytes(value));
+        }
+    }
+
+    string Message { get; set; }
+
+    readonly System.Threading.CancellationTokenSource cts = new System.Threading.CancellationTokenSource();
+    readonly BrowserHttpHandler handler = new BrowserHttpHandler();
+    readonly System.IO.Pipelines.Pipe pipe = new System.IO.Pipelines.Pipe();
+
+    protected override void OnInitialized()
+    {
+        Task.Run(Send);
+        Task.Run(Receive);
+    }
+
+    async Task Send()
+    {
+        try
+        {
+            using (var request = new HttpRequestMessage(HttpMethod.Post, "/send?channel=123"))
+            {
+                request.Options.Set(BrowserHttpHandler.EnableStreamingRequest, true);
+                request.SetBrowserRequestOption("allowHTTP1ForStreamingUpload", true);
+
+                request.Content = new StreamContent(pipe.Reader.AsStream());
+
+                using (var response = await handler.SendAsync(request, cts.Token))
+                {
+
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = ex.Message;
+        }
+    }
+
+    async Task Receive()
+    {
+        var buffer = new byte[1024];
+
+        try
+        {
+            using (var request = new HttpRequestMessage(HttpMethod.Get, "/receive?channel=123"))
+            {
+                request.Options.Set(BrowserHttpHandler.EnableStreamingResponse, true);
+
+                using (var response = await handler.SendAsync(request, System.Threading.CancellationToken.None))
+                {
+                    var stream = await response.Content.ReadAsStreamAsync();
+
+                    int readCount;
+                    while ((readCount = await stream.ReadAsync(buffer)) > 0)
+                    {
+                        var str = System.Text.Encoding.UTF8.GetString(buffer, 0, readCount);
+
+                        Message += str;
+
+                        StateHasChanged();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = ex.Message;
+        }
+    }
+
+    public void Dispose()
+    {
+        cts.Cancel();
+        cts.Dispose();
+    }
+
+}

@@ -1,0 +1,56 @@
+﻿@page "/upload"
+
+<h1>Streaming upload</h1>
+
+<InputFile OnChange="OnFileChange" />
+
+<button class="btn btn-primary" @onclick="UploadFile">Upload</button>
+
+Result: @Message
+
+@code {
+
+    readonly System.Threading.CancellationTokenSource cts = new System.Threading.CancellationTokenSource();
+    readonly BrowserHttpHandler handler = new BrowserHttpHandler();
+
+    IBrowserFile _file;
+
+    string Message { get; set; }
+
+    void OnFileChange(InputFileChangeEventArgs args)
+    {
+        _file = args.File;
+    }
+
+    private async Task UploadFile()
+    {
+        Message = "";
+        if (_file == null)
+        {
+            Message = "No file selected";
+            return;
+        }
+
+        try
+        {
+            using (var request = new HttpRequestMessage(HttpMethod.Post, "/upload"))
+            {
+                request.Options.Set(BrowserHttpHandler.EnableStreamingRequest, true);
+                request.SetBrowserRequestOption("allowHTTP1ForStreamingUpload", true);
+
+                var content = new MultipartFormDataContent();
+                content.Add(new StreamContent(_file.OpenReadStream(long.MaxValue)), "file", _file.Name);
+                request.Content = content;
+
+                using (var response = await handler.SendAsync(request, cts.Token))
+                {
+                    Message = await response.Content.ReadAsStringAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = ex.Message;
+        }
+    }
+}
