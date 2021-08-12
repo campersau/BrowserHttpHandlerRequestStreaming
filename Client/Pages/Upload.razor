@@ -4,7 +4,10 @@
 
 <InputFile OnChange="OnFileChange" />
 
-<button class="btn btn-primary" @onclick="UploadFile">Upload</button>
+@if (_file != null)
+{
+    <button class="btn btn-primary" @onclick="UploadFile">Upload</button>
+}
 
 Result: @Message
 

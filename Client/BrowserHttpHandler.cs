@@ -466,7 +466,6 @@ namespace Client
 
                 _isDisposed = true;
 
-                _abortCts.Cancel();
                 _abortCts.Dispose();
                 _abortRegistration.Dispose();
 
