@@ -285,7 +285,7 @@ namespace Client
 
                 JSObject t = (JSObject)await response.ConfigureAwait(continueOnCapturedContext: true);
 
-                var status = new WasmFetchResponse(t, abortController, abortCts, abortRegistration);
+                var status = new WasmFetchResponse(t, abortController, wasmRequestReadableStream, abortCts, abortRegistration);
                 HttpResponseMessage httpResponse = new HttpResponseMessage((HttpStatusCode)status.Status);
                 httpResponse.RequestMessage = request;
 
@@ -433,14 +433,16 @@ namespace Client
         {
             private readonly JSObject _fetchResponse;
             private readonly JSObject _abortController;
+            private readonly WasmRequestReadableStream _requestStream;
             private readonly CancellationTokenSource _abortCts;
             private readonly CancellationTokenRegistration _abortRegistration;
             private bool _isDisposed;
 
-            public WasmFetchResponse(JSObject fetchResponse, JSObject abortController, CancellationTokenSource abortCts, CancellationTokenRegistration abortRegistration)
+            public WasmFetchResponse(JSObject fetchResponse, JSObject abortController, WasmRequestReadableStream requestStream, CancellationTokenSource abortCts, CancellationTokenRegistration abortRegistration)
             {
                 _fetchResponse = fetchResponse ?? throw new ArgumentNullException(nameof(fetchResponse));
                 _abortController = abortController ?? throw new ArgumentNullException(nameof(abortController));
+                _requestStream = requestStream;
                 _abortCts = abortCts;
                 _abortRegistration = abortRegistration;
             }
@@ -469,6 +471,7 @@ namespace Client
                 _abortCts.Dispose();
                 _abortRegistration.Dispose();
 
+                _requestStream?.Dispose();
                 _fetchResponse?.Dispose();
                 _abortController?.Dispose();
             }
