@@ -36,18 +36,13 @@ You typed: @Message
     {
         try
         {
-            using (var request = new HttpRequestMessage(HttpMethod.Post, "/send?channel=123"))
-            {
-                request.Options.Set(BrowserHttpHandler.EnableStreamingRequest, true);
-                request.SetBrowserRequestOption("allowHTTP1ForStreamingUpload", true);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/send?channel=123");
+            request.Options.Set(BrowserHttpHandler.EnableStreamingRequest, true);
+            request.SetBrowserRequestOption("allowHTTP1ForStreamingUpload", true);
 
-                request.Content = new StreamContent(pipe.Reader.AsStream());
+            request.Content = new StreamContent(pipe.Reader.AsStream());
 
-                using (var response = await handler.SendAsync(request, cts.Token))
-                {
-
-                }
-            }
+            using var response = await handler.SendAsync(request, cts.Token);
         }
         catch (Exception ex)
         {
@@ -61,24 +56,20 @@ You typed: @Message
 
         try
         {
-            using (var request = new HttpRequestMessage(HttpMethod.Get, "/receive?channel=123"))
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/receive?channel=123");
+            request.Options.Set(BrowserHttpHandler.EnableStreamingResponse, true);
+
+            using var response = await handler.SendAsync(request, cts.Token);
+            using var stream = await response.Content.ReadAsStreamAsync();
+
+            int readCount;
+            while ((readCount = await stream.ReadAsync(buffer)) > 0)
             {
-                request.Options.Set(BrowserHttpHandler.EnableStreamingResponse, true);
+                var str = System.Text.Encoding.UTF8.GetString(buffer, 0, readCount);
 
-                using (var response = await handler.SendAsync(request, System.Threading.CancellationToken.None))
-                {
-                    var stream = await response.Content.ReadAsStreamAsync();
+                Message += str;
 
-                    int readCount;
-                    while ((readCount = await stream.ReadAsync(buffer)) > 0)
-                    {
-                        var str = System.Text.Encoding.UTF8.GetString(buffer, 0, readCount);
-
-                        Message += str;
-
-                        StateHasChanged();
-                    }
-                }
+                StateHasChanged();
             }
         }
         catch (Exception ex)
@@ -89,6 +80,7 @@ You typed: @Message
 
     public void Dispose()
     {
+        cts.Cancel();
         cts.Dispose();
     }
 

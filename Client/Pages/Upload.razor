@@ -8,8 +8,10 @@
 {
     <button class="btn btn-primary" @onclick="UploadFile">Upload</button>
 }
-
-Result: @Message
+@if (_message != null)
+{
+    <div>Result: @_message</div>
+}
 
 @code {
 
@@ -18,7 +20,7 @@ Result: @Message
 
     IBrowserFile _file;
 
-    string Message { get; set; }
+    string _message;
 
     void OnFileChange(InputFileChangeEventArgs args)
     {
@@ -27,33 +29,31 @@ Result: @Message
 
     private async Task UploadFile()
     {
-        Message = "";
         if (_file == null)
         {
-            Message = "No file selected";
+            _message = "No file selected";
             return;
         }
 
+        _message = null;
+
         try
         {
-            using (var request = new HttpRequestMessage(HttpMethod.Post, "/upload"))
-            {
-                request.Options.Set(BrowserHttpHandler.EnableStreamingRequest, true);
-                request.SetBrowserRequestOption("allowHTTP1ForStreamingUpload", true);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/upload");
+            request.Options.Set(BrowserHttpHandler.EnableStreamingRequest, true);
+            request.SetBrowserRequestOption("allowHTTP1ForStreamingUpload", true);
 
-                var content = new MultipartFormDataContent();
-                content.Add(new StreamContent(_file.OpenReadStream(long.MaxValue)), "file", _file.Name);
-                request.Content = content;
+            var content = new MultipartFormDataContent();
+            content.Add(new StreamContent(_file.OpenReadStream(long.MaxValue)), "file", _file.Name);
+            request.Content = content;
 
-                using (var response = await handler.SendAsync(request, cts.Token))
-                {
-                    Message = await response.Content.ReadAsStringAsync();
-                }
-            }
+            using var response = await handler.SendAsync(request, cts.Token);
+            
+            _message = await response.Content.ReadAsStringAsync();
         }
         catch (Exception ex)
         {
-            Message = ex.Message;
+            _message = ex.Message;
         }
     }
 }
