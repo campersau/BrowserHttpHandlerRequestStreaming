@@ -1,3 +1,7 @@
+# UPDATE
+
+Request Streaming will be part of .NET 9: https://github.com/dotnet/runtime/pull/91295, https://github.com/dotnet/runtime/pull/91699
+
 # dotnet WASM BrowserHttpHandler with support for ReadableStream request bodies
 
 This allows the usage of request streaming when supported. In addition to that it also needs to be opted in via:
